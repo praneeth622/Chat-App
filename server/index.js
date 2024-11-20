@@ -14,11 +14,14 @@ wss.on('connection', (ws) => {
       switch (data.type) {
         case 'join':
           clients.set(ws, { username: data.username });
+          
           broadcastMessage({
             type: 'system',
             content: `${data.username} joined the chat`,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
           });
+          
+          broadcastUserList();
           break;
           
         case 'message':
@@ -28,7 +31,7 @@ wss.on('connection', (ws) => {
               type: 'message',
               content: data.content,
               username: client.username,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
             });
           }
           break;
@@ -44,13 +47,17 @@ wss.on('connection', (ws) => {
       broadcastMessage({
         type: 'system',
         content: `${client.username} left the chat`,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
+      
       clients.delete(ws);
+      
+      broadcastUserList();
     }
   });
 });
 
+// Function to broadcast messages to all connected clients
 function broadcastMessage(message) {
   const messageStr = JSON.stringify(message);
   wss.clients.forEach((client) => {
@@ -58,6 +65,20 @@ function broadcastMessage(message) {
       client.send(messageStr);
     }
   });
+}
+
+// Function to broadcast the list of online users
+function broadcastUserList() {
+  const users = Array.from(clients.values()).map((client) => ({
+    username: client.username,
+  }));
+
+  const userListMessage = {
+    type: 'userList',
+    users: users,
+  };
+
+  broadcastMessage(userListMessage);
 }
 
 server.listen(8080, () => {
